@@ -1,0 +1,43 @@
+my_agent/
+│
+├── config/                  # 配置管理
+│   ├── __init__.py
+│   ├── settings.py          # 全局配置（环境变量、API Key等）
+│   └── prompt_templates.py   # Prompt 模板库
+│
+├── core/                    # Agent 核心逻辑（引擎与大脑）
+│   ├── __init__.py
+│   ├── agent.py             # Agent 主控流程（Loop/Decision）
+│   ├── memory.py            # 对话上下文/记忆管理
+│   └── schema.py            # 定义统一的数据模型（Message, Context, Event）
+│
+├── platforms/               # 平台适配器（消息接入与发送）
+│   ├── __init__.py
+│   ├── base.py              # 平台抽象基类 (BasePlatform)
+│   ├── qq/                  # QQ 平台实现（如使用 OneBot / NapCat）
+│   │   ├── __init__.py
+│   ├── telegram/            # Telegram 适配实现
+│   │   └── __init__.py
+│   └── web/                 # Web/API 接口适配
+│
+├── models/                  # AI 模型驱动层
+│   ├── __init__.py
+│   ├── base.py              # LLM 抽象基类 (BaseLLM)
+│   ├── openai_model.py      # OpenAI / Compatible API
+│   └── local_model.py       # 本地模型或 Ollama 驱动
+│
+├── tools/                   # Agent 可调用的工具库（插件化）
+│   ├── __init__.py
+│   ├── base.py              # 工具基类 (BaseTool)
+│   ├── web_reader.py        # 网页抓取与解析
+│   ├── search.py            # 搜索引擎/资料检索 (RAG)
+│   └── auto_reply.py        # 规则自动回复 / 关键词匹配
+│
+├── utils/                   # 通用工具函数
+│   ├── __init__.py
+│   ├── logger.py            # 日志配置
+│   └── http_client.py       # 通用网络请求封装
+│
+├── .env.example             # 环境变量模版
+├── requirements.txt         # 依赖列表
+└── main.py                  # 项目入口文件
