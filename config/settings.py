@@ -11,5 +11,9 @@ class Settings:
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     LLM_MODEL_NAME: str = "deepseek-v4-pro"
 
+    VISION_API_KEY: str =os.getenv("VISION_API_KEY", "sk-mrfapqodqzhdmjqxtxigkuujoimwxbjzvzgdhivrojcjiwdd")
+    VISION_BASE_URL: str = "https://api.siliconflow.cn/v1"
+    VISION_MODEL_NAME: str = "Qwen/Qwen3-VL-8B-Instruct"
+
 
 settings = Settings()

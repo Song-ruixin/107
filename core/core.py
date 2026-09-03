@@ -33,12 +33,33 @@ class AgentBrain:
 
         history = self.memory.get_history(msg.channel_id)
         display_name = msg.user_name or "用户"
-        message_to_send = f"{display_name}({msg.user_id}): {msg.content}"
+
+        # 针对消息内容中包含的附件，生成语义化提示追加到 prompt
+        attachment_prompts = []
+        if msg.attachments:
+            for idx, att in enumerate(msg.attachments, 1):
+                att_info = (
+                    f"附件#{idx}: [类型={att.type.value}] "
+                    f"文件名={att.file_name or '未命名'} "
+                    f"地址/URL={att.url_or_path}"
+                )
+                attachment_prompts.append(att_info)
+
+        # 组装最终送给 AI 的 User Prompt
+        # 包含了用户身份、消息文本以及所有附件的元数据
+        user_content_parts = [f"{display_name}({msg.user_id}): {msg.content}"]
+        if attachment_prompts:
+            user_content_parts.append("\n【本条消息包含以下附件信息】:")
+            user_content_parts.extend(attachment_prompts)
+            user_content_parts.append("提示：如果需要读取或分析上述附件的具体内容，请调用 read_file_content 工具并传入对应地址。")
+
+
+        final_user_prompt = "\n".join(user_content_parts)
 
         # 构造发送给 DeepSeek 的消息列表 (Messages Array)
         messages: List[Dict] = [{"role": "system", "content": self.system_prompt}]
         messages.extend(history)
-        messages.append({"role": "user", "content": message_to_send})
+        messages.append({"role": "user", "content": final_user_prompt})
 
         print(f"[Brain] 准备请求 DeepSeek ({self.model}) | 来自用户 {msg.user_name}: {msg.content}")
         print(f"已装载工具: {list(tool_manager.TOOL_MAP.keys())}")
@@ -112,7 +133,7 @@ class AgentBrain:
                     print(f"[Brain] DeepSeek 结合工具结果思考完毕，最终回复: {cleaned_reply}")
 
                     # 只保存对话的最终成对结果到 memory（防止中间工具日志污染记忆）
-                    self.memory.add_message(msg.channel_id, "user", message_to_send)
+                    self.memory.add_message(msg.channel_id, "user", final_user_prompt)
                     self.memory.add_message(msg.channel_id, "assistant", cleaned_reply)
 
                     return cleaned_reply
@@ -122,7 +143,7 @@ class AgentBrain:
                 cleaned_reply = agent_raw.content.strip()
                 print(f"[Brain] DeepSeek 思考完毕，直接回复内容: {cleaned_reply}")
 
-                self.memory.add_message(msg.channel_id, "user", message_to_send)
+                self.memory.add_message(msg.channel_id, "user", final_user_prompt)
                 self.memory.add_message(msg.channel_id, agent_raw.role, cleaned_reply)
 
                 return cleaned_reply
