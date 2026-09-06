@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from typing import Callable, Coroutine, Any, Optional, List
 
+from config.settings import settings
 from platforms.qq.client import QQWebSocketClient
 from platforms.qq.cache import message_cache
 from core.schema import UserMessage, MessageType, MessageEnv, Attachment
@@ -204,15 +205,52 @@ class qqAdapter:
         file_name: Optional[str] = None
     ) -> bool:
         """调用 NapCat 的 upload_group_file / upload_private_file 发送本地文件"""
-        action = "upload_group_file" if message_env == MessageEnv.GROUP else "upload_private_file"
-        target_key = "group_id" if message_env == MessageEnv.GROUP else "user_id"
+        import os
 
-        payload = {
-            "action": action,
-            "params": {
-                target_key: int(channel_id),
-                "file": file_path,  # NapCat 支持绝对路径/相对路径
-                "name": file_name or "file"
+        # 定义宿主机挂载目录与容器内目录的对应关系
+        HOST_BASE_DIR = settings.HOST_BASE_DIR                      # 宿主机映射根目录
+        CONTAINER_BASE_DIR =  settings.CONTAINER_BASE_DIR           # 容器内对应的根目录
+
+        # 1. 校验宿主机上的原始文件是否存在
+        abs_host_path = os.path.abspath(os.path.expanduser(file_path))
+        if not os.path.exists(abs_host_path):
+            print(f"[QQ Adapter Error] 本地文件不存在: {abs_host_path}")
+            return False
+
+        # 2. 将宿主机绝对路径转换为容器内的绝对路径
+        abs_host_base = os.path.abspath(HOST_BASE_DIR)
+        
+        # 检查文件是否确实处于挂载目录下
+        if abs_host_path.startswith(abs_host_base):
+            # 提取相对路径并拼接容器路径
+            rel_path = os.path.relpath(abs_host_path, abs_host_base)
+            container_file_path = os.path.join(CONTAINER_BASE_DIR, rel_path)
+        else:
+            print(f"[QQ Adapter Warning] 文件 {abs_host_path} 未在挂载目录 {abs_host_base} 下，NapCat 可能无法读取")
+            container_file_path = abs_host_path  # 备用方案，尝试直接传参
+
+        final_file_name = file_name or os.path.basename(abs_host_path)
+
+        # 3. 构造发送 Payload（传入转换后的 container_file_path）
+        if message_env == MessageEnv.GROUP:
+            payload = {
+                "action": "upload_group_file",
+                "params": {
+                    "group_id": int(channel_id),
+                    "file": container_file_path,
+                    "name": final_file_name
+                }
             }
-        }
+        else:
+            payload = {
+                "action": "upload_private_file",
+                "params": {
+                    "user_id": int(channel_id),
+                    "file": container_file_path,
+                    "name": final_file_name,
+                    "filename": final_file_name
+                }
+            }
+
+        print(f"[QQ Adapter] 请求 NapCat 发送文件: 宿主机={abs_host_path} -> 容器={container_file_path}")
         return await self.client.send_raw(payload)

@@ -40,6 +40,9 @@ async def main():
     # 3. 实例化 Adapter 适配器
     qqadapter = qqAdapter(client)
 
+    # 关键：把 qqadapter 传给全局单例的 brain
+    brain.adapter = qqadapter
+
     # 4. 挂载消息处理回调
     qqadapter.set_user_message_handler(
         lambda msg: handle_user_message(msg, qqadapter)

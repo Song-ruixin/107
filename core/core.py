@@ -7,13 +7,15 @@ from config.settings import settings
 from config.prompt_templates import SYSTEM_PROMPT
 from core.memory import MemoryManager
 
+
 # TOOLS 定义以及 TOOL_MAP 函数映射字典
 from tools.tool_manager import tool_manager
 
 
 class AgentBrain:
-    def __init__(self) -> None:
+    def __init__(self, adapter=None) -> None:
         #导入所有工具
+        self.adapter = adapter  # 保存 adapter 引用
         tool_manager.auto_load_tools()
 
         self.client = AsyncOpenAI(
@@ -101,8 +103,22 @@ class AgentBrain:
                     if func_name in tool_manager.TOOL_MAP:
                         target_func = tool_manager.TOOL_MAP[func_name]
                         try:
-                            # 判断函数是否为异步函数，做兼容调用
+                            # ===== 核心注入逻辑开始 =====
+                            # 将当前的 adapter 和上下文元数据补充给 func_args
+                            context_args = {
+                                "adapter": self.adapter,
+                                "channel_id": msg.channel_id,
+                                "message_env": msg.message_env
+                            }
+
+                            # 只注入函数确实声明了的参数，避免多传报错
                             import inspect
+                            sig = inspect.signature(target_func)
+                            for k, v in context_args.items():
+                                if k in sig.parameters:
+                                    func_args[k] = v
+                            # ===== 核心注入逻辑结束 =====
+
                             if inspect.iscoroutinefunction(target_func):
                                 tool_result = await target_func(**func_args)
                             else:

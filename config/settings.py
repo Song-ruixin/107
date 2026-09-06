@@ -15,5 +15,8 @@ class Settings:
     VISION_BASE_URL: str = "https://api.siliconflow.cn/v1"
     VISION_MODEL_NAME: str = "Qwen/Qwen3-VL-8B-Instruct"
 
+    CONTAINER_BASE_DIR = "/usr/src/app/napcat/files" 
+    HOST_BASE_DIR = os.path.expanduser("~/Project/107/files")
+
 
 settings = Settings()
