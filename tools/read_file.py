@@ -26,10 +26,10 @@ READ_FILE_TOOL_SCHEMA = {
     }
 }
 
-# 专门看图的独立视觉 API 客户端
+
 vision_client = AsyncOpenAI(
     api_key=settings.VISION_API_KEY,
-    base_url=settings.VISION_BASE_URL
+    base_url=settings.VISION_BASE_URL,
 )
 
 # 2. 纯粹的执行函数：接收地址 -> 返回结果字符串
@@ -88,10 +88,11 @@ async def execute_read_file(file_path_or_url: str) -> str:
                 
                 # 如果获得的 mime 泛指，兜底给 image/jpeg
                 final_mime = detected_mime_type if detected_mime_type.startswith("image/") else "image/jpeg"
-                model_name = getattr(settings, "VISION_MODEL_NAME", "Qwen/Qwen2.5-VL-7B-Instruct")
+                model_name = settings.VISION_MODEL_NAME
 
+# getattr(settings, "VISION_MODEL_NAME", "Qwen/Qwen3-VL-8B-Instruct")
 
-                print("[类型识别完成] 准备提交大模型" )
+                print(f"[类型识别完成] 准备提交大模型:[Name]{model_name} [Url]{settings.VISION_BASE_URL}")
                 resp = await vision_client.chat.completions.create(
                     model=model_name,
                     messages=[{

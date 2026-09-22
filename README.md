@@ -1,59 +1,113 @@
-# 107
-中国科学技术大学宣传部星图计划--107算力杯
-# 目标构想
-以服务主机为中心，构建一个可以用于统一集中管理各类历史文档、相关设计的Propaganda AI Agent（PAA）。期望实现以下功能：
+这份用户文档面向小白/离线部署用户，去除了复杂的编译步骤，聚焦于“零环境依赖、一键导入与启动”。本项目基于Linxu操作系统和docker
 
-- 文件管理，期望效果：
-    
-    Q:我想要查找所有有关2025年迎新晚会的资料
-    
-    A:这里是数据库中所有有关资料（给出具体资料位置，甚至可以期望打包放进压缩包）
+### 功能
+项目最终可以直接在QQ与部署在电脑上的机器人交互，并实现文件查找，发送，图片识别，智能对话等功能。
 
-- 初步审查宣传物料，可以设置多档审查力度，从最低级的错别字、语法错误，到校会校名的使用规范等。
+---
 
-- 进行一定程度的宣传物料设计。
-- 进行新成员培训，即PAA需要熟悉常用软件/网站的使用方式（可以通过准备操作文档喂给AI的形式，各大软件应该都有使用说明或者文档）
+# NapCat + Python Agent 极简部署指南
 
-- 进行星空文案自动值班，比如只需要由成员给出准备好的文案和图片，由PAA自动排版和发送，甚至设置最迟提交时间，比如11点之前未收到材料则自己生成并发送以作为应急处理。
+本项目采用 Docker 容器化技术，将 QQ 协议端（NapCat）与 Python Agent 服务打包交付。宿主机仅需安装 Docker，无需配置 Python、Node.js 等任何开发环境。
 
-# 开发路径
-1. 完成一些内置指令构建，比如/new（清除当前会话历史记录）， /chk_perm（查看我的权限）等，同时需要构建的，即一个权限系统，需要能够管理不同用户的权限。
-2. 完成通用工具的构建，即上面目标中期望实现的工具
-3. 有机会的话，利用数据库重写记忆逻辑（目前对话记忆仅仅采用json文件存储）
-4. 欢迎集思广益
+<mark> 提示 </mark>：如果没有docker，请使用下列指令安装（保证网络）：
 
-# 代码结构
-```
-107
-├── config
-│   ├── __init__.py
-│   ├── prompt_templates.py 
-│   └── settings.py
-├── core
-│   ├── core.py
-│   ├── __init__.py
-│   ├── memory.py
-│   └── schema.py
-├── data
-│   └── memory.json
-├── main.py
-├── platforms
-│   ├── qq
-│   │   ├── adapter.py
-│   │   ├── api.py
-│   │   ├── client.py
-│   │   └── __init__.py
-│   └── web
-└── tools
-    ├── get_weather.py
-    └── toll_manage.py
+```bash
+# 下载并运行官方安装脚本
+curl -fsSL https://get.docker.com | bash
+
+# 启动 Docker 并设置开机自启
+sudo systemctl enable --now docker
+
+# （可选）将当前用户加入 docker 组，之后无需输入 sudo 即可运行 docker 命令
+sudo usermod -aG docker $USER
+# 执行后需要重新登录或运行以下命令使其生效：
+newgrp docker
 ```
 
-# 推荐代码查看顺序
-1. 先看core目录下的schema文件，该文件定义了一个通用的通信框架，即每一个消息（这个信息来自QQ消息，未来可能来自微信或者telegram等平台）都需要处理成这个格式，然后用于不同模块。
-2. 再看config目录下的两个文件，一个是大模型的system配置，这里将为模型奠定一个基调，另一个是一些环境配置，（注意，如果想要复现，napcat的配置应该选择websocket客户端，访问URL填写“ws://172.17.0.1:8080”， 同时，应该配置你自己的deepseek大模型api key，推荐的办法是将你的api设置为当前终端的环境变量，更简单（但是没有那么安全）的办法是将setting.py文件中 这一行”DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "deepseek_api_key")“ 中第二个"deepseek_api_key"换成你自己的api key，如果采用这个办法，push代码前的时候请务将这个文件添加到.ignore中，否则将向所有人分享你的token【滑稽】 ）
-3. 然后查看core目录下面的core.py文件，这里有agentbrain处理消息的核心逻辑
-4. 最后看tools，这里存放所有的tool，后续开发需要新建一个文件，然后按照get_weather.py这一个示范编写
-5. 另外，core目录下有一个memory文件，如果后续需要存储方式为数据库的话，应该从这里入手
-6. plantform目录下存放有qq的消息处理和适配，可以简单了解一下消息发送和接收函数
+### 目录结构
+解压交付包后，目录结构如下：
+```
+qq_bot_release/
+├── app_images.tar         # 离线镜像包（包含 NapCat 和 Agent 环境）
+├── docker-compose.yml     # 容器服务编排配置文件
+├── .env                   # 核心环境变量配置文件（API Key、白名单等）
+├── files/                 # 共享资料库（存放需让机器人发送的本地文档/图片）
+├── data/                  # 运行数据目录（自动持久化保存历史聊天记录与数据库）
+└── napcat/
+    └── config/            # NapCat 配置文件保存目录
+```
+
+### 快速开始
+ 1. 准备配置文件
+   首次运行前必做
+   修改 .env 文件，填入你的大模型 API Key 及白名单等配置：
+
+```
+# 示例配置项
+API_KEY=your_api_key_here
+WHITELIST_USERS=12345678,87654321
+```
+
+ 2. 导入离线镜像
+   无需连网下载镜像
+   进入项目根目录，在终端（Terminal 或 PowerShell）中执行以下命令导入离线镜像包：
+```bash   
+docker load -i app_images.tar
+```
+ 3. 启动 NapCat 并完成 QQ 扫码登录
+   首次登录需授权
+   运行以下命令单独启动 NapCat 服务
+```bash
+docker compose up -d napcat
+```
+   查看日志：
+```bash
+docker compose logs  napcat | grep token
+```
+   
+### WebUI 设置核对步骤：
+上述指令应该会有类似如下输出
+
+```bash
+napcat  | 09-07 07:12:54 [info] [NapCat] [WebUi] WebUi User Panel Url: http://127.0.0.1:6099/webui?token=e36f886c4bea
+
+```
+1. 打开浏览器访问：`http://127.0.0.1:6099/webui?token=e36f886c4bea`（替换为你对应上方输出 WebUi User Panel Url）
+2. 使用手机 QQ 扫码完成登录。
+3. 进入 **网络配置 (OneBot 11)** -> 点击 **添加 WebSocket Client (客户端)**(如果原本不存在任何选项，如果已经有一个 WebSocket Client (客户端)，则跳过后面步骤)：
+* **启用**：开启（红勾）
+* **名称**：自定义（如 `qqbot`）
+* **URL**：填入 `ws://172.17.0.1:8080` 
+* **SSL 证书验证**：**务必关闭（切换为灰色）** 
+* 点击右下角 **保存**。
+   
+ ### 启动全套挂机服务
+   开启 24 小时自动化服务
+   在终端中按 Ctrl + C 退出当前日志输出，然后运行以下命令启动 Agent 主程序：
+```bash 
+docker compose up -d
+```
+   启动后，QQ 机器人即开始工作。
+
+### 运维与日常管理
+
+#### 查看运行日志
+```bash
+# 查看 Agent 业务日志
+docker compose logs -f agent
+
+# 查看 NapCat 协议端日志
+docker compose logs -f napcat
+
+停止与重启服务
+# 重启所有服务
+docker compose restart
+
+# 停止并删除容器（不会丢失 files/ 和 data/ 中的文件）
+docker compose down
+```
+
+#### 更新/发送本地文件
+将需要机器人发送的文档、图片或 PDF 文件直接放入宿主机的 ./files/ 目录下，Agent 即可在程序中实时读取并调用 NapCat 发送给 QQ 目标用户或群聊。
+
 

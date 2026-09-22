@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+napcat/qq/
+napcat/config/onebot11_*.json
+!napcat/config/onebot11.json
+*.tar
+*.zip

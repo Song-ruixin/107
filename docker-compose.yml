@@ -1,0 +1,36 @@
+services:
+  # 1. NapCat QQ 协议端
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: napcat
+    ports:
+      - "6099:6099"    # WebUI 控制台端口
+      - "3001:3001"    # WebSocket 端口
+    environment:
+      - NAPCAT_UID=0
+      - NAPCAT_GID=0
+    volumes:
+      # 挂载共享资料库到 NapCat 的默认文件目录
+      - ./files:/usr/src/app/napcat/files
+      - ./napcat/config:/app/napcat/config
+      - ./napcat/qq:/app/.config/QQ
+    restart: always
+
+  # 2. Python Agent 主程序
+  agent:
+    image: my_qq_agent:latest
+    container_name: qq_agent
+    network_mode: "host"
+    env_file:
+      - .env
+    volumes:
+      # 1. 资料库共享挂载： Agent 读取/索引文件
+      - ${HOST_BASE_DIR}:/app/files
+      # 2. 聊天历史持久化：保存数据库/SQLite/JSON 记录，防止容器重启丢失数据
+      - ./data:/app/data
+      # 3. 单文件挂载：将宿主机根目录的 SYSTEM_PROMPT.txt 挂载给容器
+      - ./SYSTEM_PROMPT.txt:/app/SYSTEM_PROMPT.txt
+
+    restart: always
+    depends_on:
+      - napcat

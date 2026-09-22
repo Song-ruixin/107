@@ -7,7 +7,7 @@ FIND_FILE_SCHEMA = {
     "type": "function",
     "function": {
         "name": "find_file",
-        "description": "扫描本地文件存储目录，检索匹配的文件名及路径。当需要查找文件、确定文件是否存在、或准备发送文件给用户前获取文件路径时调用此工具。",
+        "description": "扫描本地文件存储目录，检索匹配的文件名及路径。不能用于发送文件",
         "parameters": {
             "type": "object",
             "properties": {
@@ -58,19 +58,11 @@ async def find_file(query: str) -> str:
         }
         return json.dumps(result, ensure_ascii=False)
 
-    # 关键：给大模型的 Behavior Prompt / Instruction
-    instruction = (
-        f"已成功检索到 {len(matched_files)} 个相关文件。\n"
-        "【下一步行动指南】\n"
-        "1. 如果用户仅询问有哪些文件（如“有哪些资料”、“帮我找找迎新文件”），请直接在回复文本中列出匹配的文件名；\n"
-        "2. 如果用户明确表达了获取/发送意图（如“把迎新推文发给我”、“收徐克尊近代物理学”、“传一下海报”），"
-        "你必须立即在下一个 Action 中调用 `send_file` 工具，参数 `file_paths` 传入匹配文件的 `path` 字符串列表！绝对不要在回答中只打字而不调工具。"
-    )
 
     result = {
         "status": "success",
         "matched_files": matched_files,
         "total_count": len(matched_files),
-        "instruction": instruction  # 用明确的字段传递操作指南
     }
+    print(f"[find_file] 工具调用完毕，返回 {matched_files} 共 {len(matched_files)}个文件")
     return json.dumps(result, ensure_ascii=False)
